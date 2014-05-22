@@ -229,6 +229,23 @@ on early-boot
 
     start wcnss-service
 
+    write /sys/bus/platform/drivers/msm_hsic_host/unbind "msm_hsic_host"
+
+    chown system system /sys/bus/platform/drivers/msm_hsic_host/bind
+    chmod 0200 /sys/bus/platform/drivers/msm_hsic_host/bind
+
+    chown system system /sys/bus/platform/drivers/msm_hsic_host/unbind
+    chmod 0200 /sys/bus/platform/drivers/msm_hsic_host/unbind
+
+    setprop wlan.driver.config /data/misc/wifi/WCNSS_qcom_cfg.ini
+
+    # Trigger WCNSS for firmware download
+    write /dev/wcnss_wlan 1
+
+    write /sys/devices/fb000000.qcom,wcnss-wlan/serial_number ${ro.serialno}
+
+    start wcnss-service
+
 on boot
     # bluetooth
     chown bluetooth bluetooth /sys/module/hci_smd/parameters/hcismd_set
@@ -380,7 +397,7 @@ service dhcpcd_wlan0 /system/bin/dhcpcd -ABKLG
     disabled
     oneshot
 
-service fm_dl /system/bin/sh /system/etc/init.qcom.fm.sh
+service fm_dl /system/bin/setprop hw.fm.init 1
     class late_start
     user root
     group system fm_radio
@@ -496,6 +513,11 @@ service p2p_supplicant /system/bin/wpa_supplicant \
     disabled
     oneshot
 
+service pnpmgr /system/bin/pnpmgr -c /system/etc/pnp.bin
+    class core
+    user system
+    group system
+
 service ptt_socket_app /system/bin/ptt_socket_app
     class main
     user system
@@ -523,6 +545,13 @@ service qrngd /system/bin/qrngd -f
    user root
    group root
 
+service qrngp /system/bin/qrngp
+    class main
+    user root
+    group root
+    oneshot
+    disabled
+
 service qseecomd /system/bin/qseecomd
    class main
    user root
@@ -531,6 +560,11 @@ service qseecomd /system/bin/qseecomd
 service rmt_storage /system/bin/rmt_storage modem_st1 modem_st2 fsc recovery radio_config cdma_record
     class core
     user root
+
+service thermal-engine /system/bin/thermal-engine
+   class main
+   user root
+   group root
 
 service time_daemon /system/bin/time_daemon
    class late_start
@@ -611,3 +645,104 @@ on property:ro.use_data_netmgrd=false
 
 on property:service.adb.root=1
     write /sys/class/android_usb/android0/restart_adbd 1
+
+on property:sys.boot_completed=1
+    start qrngp
+
+# Performance
+on property:service.bootanim.exit=1
+    write /sys/module/lpm_resources/enable_low_power/l2 "2"
+    write /sys/module/lpm_resources/enable_low_power/pxo "1"
+    write /sys/module/lpm_resources/enable_low_power/vdd_dig "1"
+    write /sys/module/lpm_resources/enable_low_power/vdd_mem "1"
+    write /sys/module/msm_pm/modes/cpu0/power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu1/power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu2/power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu3/power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu0/power_collapse/idle_enabled "1"
+    write /sys/module/msm_pm/modes/cpu1/power_collapse/idle_enabled "0"
+    write /sys/module/msm_pm/modes/cpu2/power_collapse/idle_enabled "0"
+    write /sys/module/msm_pm/modes/cpu3/power_collapse/idle_enabled "0"
+    write /sys/module/msm_pm/modes/cpu0/standalone_power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu1/standalone_power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu2/standalone_power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu3/standalone_power_collapse/suspend_enabled "1"
+    write /sys/module/msm_pm/modes/cpu0/standalone_power_collapse/idle_enabled "1"
+    write /sys/module/msm_pm/modes/cpu1/standalone_power_collapse/idle_enabled "1"
+    write /sys/module/msm_pm/modes/cpu2/standalone_power_collapse/idle_enabled "1"
+    write /sys/module/msm_pm/modes/cpu3/standalone_power_collapse/idle_enabled "1"
+    write /sys/module/msm_pm/modes/cpu0/retention/idle_enabled "0"
+    write /sys/module/msm_pm/modes/cpu1/retention/idle_enabled "0"
+    write /sys/module/msm_pm/modes/cpu2/retention/idle_enabled "0"
+    write /sys/module/msm_pm/modes/cpu3/retention/idle_enabled "0"
+
+    write /sys/module/cpubw_krait/parameters/enable "1"
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq "300000"
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq "300000"
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq "300000"
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq "300000"
+    chown system /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+    chown system /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+    chown root.system /sys/devices/system/cpu/mfreq
+    chmod 220 /sys/devices/system/cpu/mfreq
+    chown root.system /sys/devices/system/cpu/cpu1/online
+    chown root.system /sys/devices/system/cpu/cpu2/online
+    chown root.system /sys/devices/system/cpu/cpu3/online
+    chmod 664 /sys/devices/system/cpu/cpu1/online
+    chmod 664 /sys/devices/system/cpu/cpu2/online
+    chmod 664 /sys/devices/system/cpu/cpu3/online
+    write /dev/cpuctl/apps/cpu.notify_on_migrate "1"
+
+on property:init.svc.bootanim=running
+    # Switch to NOOP and performance mode while booting
+    setprop sys.perf.profile 2
+    write /sys/block/mmcblk0/queue/scheduler noop
+
+on property:init.svc.bootanim=stopped
+    # Switch to ROW and balanced mode after boot for better UX
+    setprop sys.perf.profile 1
+    write /sys/block/mmcblk0/queue/scheduler row
+
+# CM Performance Profiles
+on property:sys.perf.profile=0
+    write /sys/class/devfreq/qcom,cpubw.42/governor "powersave"
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor conservative
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor conservative
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor conservative
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor conservative
+    write /sys/class/kgsl/kgsl-3d0/devfreq/governor msm-adreno-tz
+    start mpdecision
+
+on property:sys.perf.profile=1
+    write /sys/class/devfreq/qcom,cpubw.42/governor "msm_cpufreq"
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "ondemand"
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "ondemand"
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor "ondemand"
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor "ondemand"
+
+    write /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate "50000"
+    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold "90"
+    write /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy "1"
+    write /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor "2"
+    write /sys/devices/system/cpu/cpufreq/ondemand/down_differential "10"
+    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold_multi_core "70"
+    write /sys/devices/system/cpu/cpufreq/ondemand/down_differential_multi_core "3"
+    write /sys/devices/system/cpu/cpufreq/ondemand/optimal_freq "960000"
+    write /sys/devices/system/cpu/cpufreq/ondemand/sync_freq "960000"
+    write /sys/devices/system/cpu/cpufreq/ondemand/input_boost "1190400"
+    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold_any_cpu_load "80"
+    write /sys/class/kgsl/kgsl-3d0/devfreq/governor msm-adreno-tz
+    start mpdecision
+
+on property:sys.perf.profile=2
+    stop mpdecision
+    write /sys/devices/system/cpu/cpu0/online 1
+    write /sys/devices/system/cpu/cpu1/online 1
+    write /sys/devices/system/cpu/cpu2/online 1
+    write /sys/devices/system/cpu/cpu3/online 1
+    write /sys/class/devfreq/qcom,cpubw.42/governor "performance"
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor performance
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor performance
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor performance
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor performance
+    write /sys/class/kgsl/kgsl-3d0/devfreq/governor performance
