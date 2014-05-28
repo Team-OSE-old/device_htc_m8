@@ -1,13 +1,13 @@
 [
   {
-    "remote": "ls",
-    "repository": "android_kernel_htc_msm8974",
+    "remote": "gh",
+    "repository": "LiquidSmooth-devices/android_kernel_htc_msm8974",
     "target_path": "kernel/htc/msm8974",
     "revision": "kitkat"
   },
   {
-    "remote": "ls",
-    "repository": "android_device_qcom_common",
+    "remote": "gh",
+    "repository": "LiquidSmooth-devices/android_device_qcom_common",
     "target_path": "device/qcom/common",
     "revision": "kitkat"
   },
