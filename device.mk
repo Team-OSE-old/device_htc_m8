@@ -23,6 +23,10 @@ $(call inherit-product-if-exists, frameworks/native/build/phone-xxhdpi-2048-hwui
 # overlays
 DEVICE_PACKAGE_OVERLAYS += device/htc/m8/overlay
 
+# Boot animation
+TARGET_SCREEN_HEIGHT := 1920
+TARGET_SCREEN_WIDTH := 1080
+
 # Device uses ultra-high-density artwork where available
 PRODUCT_AAPT_CONFIG := hdpi xhdpi xxhdpi
 PRODUCT_AAPT_PREF_CONFIG := xxhdpi
@@ -92,6 +96,7 @@ PRODUCT_PACKAGES += \
     audio.r_submix.default \
     audio.usb.default \
     libaudio-resampler \
+    libqcompostprocbundle \
     libqcomvisualizer \
     tinymix
 
@@ -219,6 +224,10 @@ PRODUCT_PACKAGES += \
 # Wifi firmware
 PRODUCT_PACKAGES += \
     wcnss_service
+
+# Misc Packages
+PRODUCT_PACKAGES += \
+    DeviceSettings
 
 # WiFi
 PRODUCT_COPY_FILES += \
